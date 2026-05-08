@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Asia Trading Pairs</string>
+    <string name="nav_pairs">Pairs</string>
+    <string name="nav_schedule">Schedule</string>
+    <string name="nav_info">Guide</string>
+    <string name="pull_to_refresh">Pull to refresh prices</string>
+</resources>

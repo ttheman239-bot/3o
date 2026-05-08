@@ -1,0 +1,14 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+TradingPairsApp/local.properties
+TradingPairsApp/.gradle
+TradingPairsApp/app/build
+TradingPairsApp/build

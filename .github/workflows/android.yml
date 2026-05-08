@@ -1,0 +1,104 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('TradingPairsApp/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x TradingPairsApp/gradlew || true
+
+      - name: Build Debug APK
+        working-directory: TradingPairsApp
+        run: gradle assembleDebug --no-daemon
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+      - name: Rename APK
+        run: |
+          mkdir -p artifacts
+          cp TradingPairsApp/app/build/outputs/apk/debug/app-debug.apk \
+             artifacts/AsiaTradingPairs-v1.0-debug.apk
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AsiaTradingPairs-APK
+          path: artifacts/AsiaTradingPairs-v1.0-debug.apk
+          retention-days: 30
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/')
+        with:
+          tag_name: latest-build
+          name: "Asia Trading Pairs - Latest Build"
+          body: |
+            ## Asia Trading Pairs Android App
+
+            แอปสำหรับติดตาม 3 คู่ trading pairs Asia ↔ US
+
+            ### 3 คู่หลัก:
+            - **YUM ↔ 9987.HK** — Yum China (Subsidiary)
+            - **WYNN ↔ 1128.HK** — Wynn Macau (Direct Exposure)
+            - **TSLA ↔ 1211.HK** — BYD (Competitor)
+
+            ### Features:
+            - Real-time prices จาก Yahoo Finance API
+            - Catalyst schedule (Macau GGR, BYD monthly sales)
+            - Multi-timezone clock (BKK / HKT / NY)
+            - Dark trading terminal theme
+
+            ### วิธีติดตั้ง:
+            1. Download `AsiaTradingPairs-v1.0-debug.apk`
+            2. เปิด Settings → Security → Unknown Sources → Allow
+            3. เปิดไฟล์ APK แล้ว Install
+            4. เปิดแอป "Asia Trading Pairs"
+
+            ---
+            Built from: `${{ github.sha }}`
+          files: artifacts/AsiaTradingPairs-v1.0-debug.apk
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
