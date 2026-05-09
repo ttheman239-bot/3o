@@ -23,20 +23,11 @@ jobs:
           java-version: "11"
           distribution: "temurin"
 
-      - name: Print Android SDK info
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls "$ANDROID_HOME" 2>/dev/null || echo "ANDROID_HOME not set or missing"
-
       - name: Write local.properties
         run: |
-          ANDROID_SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
-          if [ -z "$ANDROID_SDK" ]; then
-            ANDROID_SDK="/usr/local/lib/android/sdk"
-          fi
-          echo "sdk.dir=$ANDROID_SDK" > local.properties
-          cat local.properties
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          echo "sdk.dir=$SDK" > local.properties
+          echo "sdk.dir=$SDK"
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -45,7 +36,7 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Verify APK exists
-        run: ls -lh app/build/outputs/apk/debug/
+        run: ls -lh app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload debug APK as artifact
         uses: actions/upload-artifact@v4
@@ -54,21 +45,27 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Delete existing latest release
-        if: github.ref == 'refs/heads/main'
-        run: |
-          gh release delete latest --yes || true
-          git push origin :refs/tags/latest || true
+      - name: Delete existing release
+        if: github.event_name == 'push'
+        run: gh release delete latest --yes 2>/dev/null || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Delete existing tag
+        if: github.event_name == 'push'
+        run: git push origin :refs/tags/latest 2>/dev/null || true
+
       - name: Create GitHub Release with APK
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Latest Build
+          name: "Latest Build"
           body: |
-            Debug APK built from commit ${{ github.sha }}
+            ## Download
+            Click **app-debug.apk** below to download.
+
+            Built from branch `${{ github.ref_name }}` · commit `${{ github.sha }}`
           prerelease: true
           files: app/build/outputs/apk/debug/app-debug.apk
+          fail_on_unmatched_files: true
